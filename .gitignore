@@ -1,0 +1,26 @@
+# Java / Maven
+backend/target/
+*.class
+
+# Node / Expo
+app/node_modules/
+app/.expo/
+app/dist/
+app/web-build/
+app/.env*
+app/*.tsbuildinfo
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

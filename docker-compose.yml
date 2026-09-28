@@ -1,0 +1,22 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:15
+    container_name: homepal-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-homepal}
+      POSTGRES_USER: ${POSTGRES_USER:-homepal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker Compose}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: homepal-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+
+volumes:
+  postgres_data:
