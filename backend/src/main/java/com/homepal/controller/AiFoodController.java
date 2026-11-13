@@ -23,18 +23,26 @@ public class AiFoodController {
     private final ObjectMapper objectMapper;
     private final String apiKey;
     private final String model;
+    private final String grokApiKey;
+    private final String grokModel;
     private final FoodNutritionService nutritionService;
+    private final RestClient grokRestClient;
 
     public AiFoodController(
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
             @Value("${sarvam.api-key:}") String apiKey,
             @Value("${sarvam.model:sarvam-m}") String model,
+            @Value("${grok.api-key:}") String grokApiKey,
+            @Value("${grok.model:grok-3-mini}") String grokModel,
             FoodNutritionService nutritionService) {
         this.restClient = restClientBuilder.baseUrl("https://api.sarvam.ai").build();
+        this.grokRestClient = restClientBuilder.baseUrl("https://api.x.ai").build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
+        this.grokApiKey = grokApiKey;
+        this.grokModel = grokModel;
         this.nutritionService = nutritionService;
     }
 
@@ -53,49 +61,60 @@ public class AiFoodController {
                     "calories", datasetFood.calories(),
                     "protein", datasetFood.protein(),
                     "carbs", datasetFood.carbs(),
-                    "fat", datasetFood.fat(),
+                    "fats", datasetFood.fat(),
                     "icon", "DB",
                     "category", "Dataset",
                     "source", datasetFood.source()));
         }
 
-        if (apiKey.isBlank()) {
-            return ResponseEntity.status(503).body(Map.of("error", "Sarvam is not configured. Set SARVAM_API_KEY on the backend."));
+        ResponseEntity<?> grokResult = identifyWithProvider(grokRestClient, grokApiKey, grokModel, request.query(), "Grok");
+        if (grokResult != null) {
+            return grokResult;
         }
 
+        ResponseEntity<?> sarvamResult = identifyWithProvider(restClient, apiKey, model, request.query(), "Sarvam");
+        if (sarvamResult != null) {
+            return sarvamResult;
+        }
+        return ResponseEntity.status(503).body(Map.of("error", "Food search is temporarily unavailable."));
+    }
+
+    private ResponseEntity<?> identifyWithProvider(RestClient client, String providerKey, String providerModel,
+                                                   String query, String providerName) {
+        if (providerKey.isBlank()) return null;
         Map<String, Object> payload = Map.of(
-                "model", model,
+                "model", providerModel,
                 "temperature", 0.1,
                 "max_tokens", 350,
                 "messages", new Object[]{
-                        Map.of("role", "system", "content", "You are a nutrition assistant for Indian foods. Return only valid JSON with keys name, detail, calories, protein, category, icon. calories and protein must be numbers for one normal serving. Never invent certainty; provide a reasonable estimate."),
-                        Map.of("role", "user", "content", "Identify this food and estimate nutrition for one normal serving: " + request.query())
+                        Map.of("role", "system", "content", "You are a nutrition assistant for Indian foods. Return only valid JSON with keys name, detail, calories, protein, carbs, fats, category, icon. All nutrition values must be numbers for one normal serving. Never invent certainty; provide a reasonable estimate."),
+                        Map.of("role", "user", "content", "Identify this food and estimate nutrition for one normal serving: " + query)
                 }
         );
-
         try {
-            String response = restClient.post()
+            String response = client.post()
                     .uri("/v1/chat/completions")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + providerKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()
                     .body(String.class);
             JsonNode root = objectMapper.readTree(response);
             String content = root.path("choices").path(0).path("message").path("content").asText();
-            String json = content.replace("```json", "").replace("```", "").trim();
-            JsonNode food = objectMapper.readTree(json);
+            JsonNode food = objectMapper.readTree(content.replace("```json", "").replace("```", "").trim());
             return ResponseEntity.ok(Map.of(
                     "id", -1,
-                    "name", food.path("name").asText(request.query()),
-                    "detail", food.path("detail").asText("AI estimate, one serving"),
+                    "name", food.path("name").asText(query),
+                    "detail", food.path("detail").asText("Nutrition estimate, one serving"),
                     "calories", food.path("calories").asInt(0),
                     "protein", food.path("protein").asDouble(0),
+                    "carbs", food.path("carbs").asDouble(0),
+                    "fats", food.path("fats").asDouble(0),
                     "icon", food.path("icon").asText("AI"),
-                    "category", food.path("category").asText("AI estimate")
+                    "category", food.path("category").asText("Nutrition estimate")
             ));
-        } catch (Exception exception) {
-            return ResponseEntity.status(502).body(Map.of("error", "Sarvam could not identify that food right now."));
+        } catch (RuntimeException | java.io.IOException exception) {
+            return null;
         }
     }
 

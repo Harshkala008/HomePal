@@ -26,6 +26,9 @@ app:
 sarvam:
   api-key: ${SARVAM_API_KEY:}
   model: ${SARVAM_MODEL:sarvam-m}
+grok:
+  api-key: ${GROK_API_KEY:}
+  model: ${GROK_MODEL:grok-3-mini}
 nutrition:
   datasets:
     processed: ${NUTRITION_PROCESSED_DATASET:../Indian_Food_Nutrition_Processed.csv}

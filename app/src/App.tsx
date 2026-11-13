@@ -5,7 +5,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <Text style={styles.title}>HomePal</Text>
+      <Text style={styles.title}>Fit Self</Text>
       <Text style={styles.subtitle}>Calorie tracker for Indian meals</Text>
       <Text style={styles.card}>Search, scan, and log smarter.</Text>
     </View>

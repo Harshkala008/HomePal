@@ -30,10 +30,30 @@ public class FoodNutritionService {
 
     public FoodNutrition findBestMatch(String query) {
         String normalizedQuery = normalize(query);
-        return foods.stream()
+        FoodNutrition directMatch = foods.stream()
                 .filter(food -> normalize(food.name()).contains(normalizedQuery)
                         || normalizedQuery.contains(normalize(food.name())))
                 .min(Comparator.comparingInt(food -> Math.abs(normalize(food.name()).length() - normalizedQuery.length())))
+                .orElse(null);
+        if (directMatch != null) return directMatch;
+
+        String[] queryTokens = query.toLowerCase(Locale.ROOT).split("[^a-z0-9]+");
+        return foods.stream()
+                .filter(food -> {
+                    String normalizedName = normalize(food.name());
+                    int matchingTokens = 0;
+                    for (String token : queryTokens) {
+                        if (token.length() >= 3 && normalizedName.contains(token)) matchingTokens++;
+                    }
+                    return matchingTokens > 0;
+                })
+                .max(Comparator.comparingInt(food -> {
+                    int score = 0;
+                    for (String token : queryTokens) {
+                        if (token.length() >= 3 && normalize(food.name()).contains(token)) score += token.length();
+                    }
+                    return score;
+                }))
                 .orElse(null);
     }
 

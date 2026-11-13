@@ -1,6 +1,6 @@
-# HomePal
+# Fit Self
 
-HomePal is a nutrition and calorie tracking app built for local laptop development and mobile-friendly deployment. This repo is configured to run without needing a full Postgres install first, then can be moved to free cloud hosting later.
+Fit Self is a nutrition and calorie tracking app built for local laptop development and mobile-friendly deployment. This repo is configured to run without needing a full Postgres install first, then can be moved to free cloud hosting later.
 
 ## What works right now
 
@@ -25,6 +25,14 @@ To enable Sarvam food lookup, set the replacement key in the backend terminal be
 $env:SARVAM_API_KEY = 'paste-your-new-sarvam-key-here'
 $env:SARVAM_MODEL = 'sarvam-m'
 mvn spring-boot:run
+```
+
+Food search checks the bundled nutrition datasets first, then uses Grok when `GROK_API_KEY` is configured, and falls back to Sarvam when Grok is unavailable. Keep both keys in backend environment variables only:
+
+```powershell
+$env:GROK_API_KEY = 'your-grok-key'
+$env:GROK_MODEL = 'grok-3-mini'
+$env:SARVAM_API_KEY = 'your-sarvam-key'
 ```
 
 The web app uses `POST http://localhost:8080/api/v1/ai/food` for food lookup. The backend checks `Indian_Food_Nutrition_Processed.csv` and `Indian Fruits And Nutritious Foods Dataset.csv` first, then uses Sarvam for foods that are not present locally. Dataset paths can be overridden with `NUTRITION_PROCESSED_DATASET` and `NUTRITION_FRUITS_DATASET`. If both the datasets and Sarvam cannot identify a food, the endpoint returns a clear error.
@@ -168,4 +176,3 @@ npx tsc --noEmit
 3. Test the health endpoint
 4. Then deploy the backend to a free host and point the app to the hosted URL
 5. Keep the app stable by validating after every change with `mvn test` and `npx tsc --noEmit`
-
